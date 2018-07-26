@@ -17,7 +17,7 @@ type CV struct {
 }
 
 func (t *CvChain) Init(stub shim.ChaincodeStubInterface) peer.Response {
-
+    return shim.Success(nil)
 }
 
 func (t *CvChain) Invoke(stub shim.ChaincodeStubInterface) peer.Response {
@@ -28,10 +28,6 @@ func (t *CvChain) Invoke(stub shim.ChaincodeStubInterface) peer.Response {
         result, err = add(stub, args)
     } else if fn == "getRecord" {
         result, err = get(stub, args)
-    } else if fn == "encRecord" {
-        result, err = enc(stub, args)
-    } else if fn == "decRecord" {
-        result, err = dec(stub, args)
     }
     if err != nil {
         return shim.Error(err.Error())
