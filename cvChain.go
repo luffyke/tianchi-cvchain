@@ -4,11 +4,12 @@ import (
     "fmt"
     "encoding/json"
 
+    "github.com/pkg/errors"
     "github.com/hyperledger/fabric/bccsp"
-	"github.com/hyperledger/fabric/bccsp/factory"
-	"github.com/hyperledger/fabric/core/chaincode/shim"
-	"github.com/hyperledger/fabric/core/chaincode/shim/ext/entities"
-	"github.com/hyperledger/fabric/protos/peer"
+    "github.com/hyperledger/fabric/bccsp/factory"
+    "github.com/hyperledger/fabric/core/chaincode/shim"
+    "github.com/hyperledger/fabric/core/chaincode/shim/ext/entities"
+    "github.com/hyperledger/fabric/protos/peer"
 )
 
 const DECKEY = "DECKEY"
@@ -21,7 +22,7 @@ type CvChain struct {
 
 type CV struct {
     Company   string `json:"company"`
-	Position  string `json:"position"`
+    Position  string `json:"position"`
 }
 
 func (t *CvChain) Init(stub shim.ChaincodeStubInterface) peer.Response {
@@ -41,13 +42,15 @@ func (t *CvChain) Invoke(stub shim.ChaincodeStubInterface) peer.Response {
         if err != nil {
             return shim.Error(fmt.Sprintf("Could not retrieve transient, err %s", err))
         }
-        result, err = enc(stub, args, tMap[ENCKEY], tMap[IV])
+        // result, err = enc(stub, args, tMap[ENCKEY], tMap[IV])
+        return t.Enc(stub, args[0:], tMap[ENCKEY], tMap[IV])
     } else if fn == "decRecord" {
         tMap, err := stub.GetTransient()
         if err != nil {
             return shim.Error(fmt.Sprintf("Could not retrieve transient, err %s", err))
         }
-        result, err = dec(stub, args, tMap[DECKEY])
+        // result, err = dec(stub, args, tMap[DECKEY])
+        return t.Dec(stub, args[0:], tMap[DECKEY])
     }
     if err != nil {
         return shim.Error(err.Error())
@@ -95,15 +98,16 @@ func get(stub shim.ChaincodeStubInterface, args []string) (string, error) {
     return cv.Company, nil
 }
 
-func enc(stub shim.ChaincodeStubInterface, args []string, encKey, IV []byte) (string, error) {
+func (t *CvChain) Enc(stub shim.ChaincodeStubInterface, args []string, encKey, IV []byte) pb.Response {
     // create the encrypter entity - we give it an ID, the bccsp instance, the key and (optionally) the IV
-	ent, err := entities.NewAES256EncrypterEntity("ID", t.bccspInst, encKey, IV)
-	if err != nil {
-        return "", fmt.Errorf("entities.NewAES256EncrypterEntity failed, err %s", err)
-	}
+    ent, err := entities.NewAES256EncrypterEntity("ID", t.bccspInst, encKey, IV)
+    if err != nil {
+        //return "", fmt.Errorf("entities.NewAES256EncrypterEntity failed, err %s", err)
+        return shim.Error(fmt.Sprintf("entities.NewAES256EncrypterEntity failed, err %s", err))
+    }
     /*
-	if len(args) != 2 {
-		return shim.Error("Expected 2 parameters to function Encrypter")
+    if len(args) != 2 {
+        return shim.Error("Expected 2 parameters to function Encrypter")
     }
     */
     /*
@@ -116,80 +120,85 @@ func enc(stub shim.ChaincodeStubInterface, args []string, encKey, IV []byte) (st
     var cv = CV{Company: args[2], Position: args[3]}
     cvAsBytes, _ := json.Marshal(cv)
 
-	// here, we encrypt cleartextValue and assign it to key
-	err = encryptAndPutState(stub, ent, key, cvAsBytes)
-	if err != nil {
-        return "", fmt.Errorf("encryptAndPutState failed: %s", err)
+    // here, we encrypt cleartextValue and assign it to key
+    err = encryptAndPutState(stub, ent, key, cvAsBytes)
+    if err != nil {
+        // return "", fmt.Errorf("encryptAndPutState failed: %s", err)
+        return shim.Error(fmt.Sprintf("signEncryptAndPutState failed, err %+v", err))
 	}
-	return string(cvAsBytes), nil
+    // return string(cvAsBytes), nil
+    return shim.Success(nil)
 }
 
-func dec(stub shim.ChaincodeStubInterface, args []string, decKey []byte) (string, error) {
+func (t *CvChain) Dec(stub shim.ChaincodeStubInterface, args []string, decKey []byte) pb.Response {
     // create the encrypter entity - we give it an ID, the bccsp instance, the key and (optionally) the IV
-	ent, err := entities.NewAES256EncrypterEntity("ID", t.bccspInst, decKey)
-	if err != nil {
-        //return shim.Error(fmt.Sprintf("entities.NewAES256EncrypterEntity failed, err %s", err))
-        return "", fmt.Errorf("entities.NewAES256EncrypterEntity failed, err %s", err) 
-	}
+    ent, err := entities.NewAES256EncrypterEntity("ID", t.bccspInst, decKey, "")
+    if err != nil {
+        return shim.Error(fmt.Sprintf("entities.NewAES256EncrypterEntity failed, err %s", err))
+        //return "", fmt.Errorf("entities.NewAES256EncrypterEntity failed, err %s", err)
+    }
     /*
-	if len(args) != 1 {
-		return shim.Error("Expected 1 parameters to function Decrypter")
+    if len(args) != 1 {
+        return shim.Error("Expected 1 parameters to function Decrypter")
     }
     */
-
-	// key
+    // key
     var key = args[0] + "-" + args[1]
-
-	// here we decrypt the state associated to key
-	value, err := getStateAndDecrypt(stub, ent, key)
-	if err != nil {
-        //return shim.Error(fmt.Sprintf("getStateAndDecrypt failed, err %+v", err))
-        return "", fmt.Errorf("getStateAndDecrypt failed: %s", err)
-	}
+    // here we decrypt the state associated to key
+    value, err := getStateAndDecrypt(stub, ent, key)
+    if err != nil {
+        return shim.Error(fmt.Sprintf("getStateAndDecrypt failed, err %+v", err))
+        //return "", fmt.Errorf("getStateAndDecrypt failed: %s", err)
+    }
     cv := CV{}
-	json.Unmarshal(value, &cv)
-	// here we return the decrypted value as a result
-	return cv.Company, nil
+    json.Unmarshal(value, &cv)
+    // here we return the decrypted value as a result
+    // return cv.Company, nil
+    return shim.Success(cv.Company)
 }
 
 // getStateAndDecrypt retrieves the value associated to key,
 // decrypts it with the supplied entity and returns the result
 // of the decryption
 func getStateAndDecrypt(stub shim.ChaincodeStubInterface, ent entities.Encrypter, key string) ([]byte, error) {
-	// at first we retrieve the ciphertext from the ledger
-	ciphertext, err := stub.GetState(key)
-	if err != nil {
-		return nil, err
-	}
-
-	// GetState will return a nil slice if the key does not exist.
-	// Note that the chaincode logic may want to distinguish between
-	// nil slice (key doesn't exist in state db) and empty slice
-	// (key found in state db but value is empty). We do not
-	// distinguish the case here
-	if len(ciphertext) == 0 {
-		return nil, errors.New("no ciphertext to decrypt")
-	}
-
-	return ent.Decrypt(ciphertext)
+    // at first we retrieve the ciphertext from the ledger
+    ciphertext, err := stub.GetState(key)
+    if err != nil {
+        return nil, err
+    }
+    // GetState will return a nil slice if the key does not exist.
+    // Note that the chaincode logic may want to distinguish between
+    // nil slice (key doesn't exist in state db) and empty slice
+    // (key found in state db but value is empty). We do not
+    // distinguish the case here
+    if len(ciphertext) == 0 {
+        return nil, errors.New("no ciphertext to decrypt")
+    }
+    return ent.Decrypt(ciphertext)
 }
 
 // encryptAndPutState encrypts the supplied value using the
 // supplied entity and puts it to the ledger associated to
 // the supplied KVS key
 func encryptAndPutState(stub shim.ChaincodeStubInterface, ent entities.Encrypter, key string, value []byte) error {
-	// at first we use the supplied entity to encrypt the value
-	ciphertext, err := ent.Encrypt(value)
-	if err != nil {
-		return err
-	}
-
-	return stub.PutState(key, ciphertext)
+    // at first we use the supplied entity to encrypt the value
+    ciphertext, err := ent.Encrypt(value)
+    if err != nil {
+        return err
+    }
+    return stub.PutState(key, ciphertext)
 }
 
 // main function starts up the chaincode in the container during instantiate
 func main() {
+    /*
     if err := shim.Start(new(CvChain)); err != nil {
+        fmt.Printf("Error starting CvChain chaincode: %s", err)
+    }
+    */
+    factory.InitFactories(nil)
+    err := shim.Start(&CvChain{factory.GetDefault()})
+    if err != nil {
         fmt.Printf("Error starting CvChain chaincode: %s", err)
     }
 }
