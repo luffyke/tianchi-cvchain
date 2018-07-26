@@ -124,7 +124,7 @@ func enc(stub shim.ChaincodeStubInterface, args []string, encKey, IV []byte) (st
 	return string(cvAsBytes), nil
 }
 
-func dec((stub shim.ChaincodeStubInterface, args []string, decKey) (string, error) {
+func dec(stub shim.ChaincodeStubInterface, args []string, decKey) (string, error) {
     // create the encrypter entity - we give it an ID, the bccsp instance, the key and (optionally) the IV
 	ent, err := entities.NewAES256EncrypterEntity("ID", t.bccspInst, decKey)
 	if err != nil {
