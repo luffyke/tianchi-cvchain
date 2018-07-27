@@ -98,7 +98,7 @@ func get(stub shim.ChaincodeStubInterface, args []string) (string, error) {
     return cv.Company, nil
 }
 
-func (t *CvChain) Enc(stub shim.ChaincodeStubInterface, args []string, encKey, IV []byte) pb.Response {
+func (t *CvChain) Enc(stub shim.ChaincodeStubInterface, args []string, encKey, IV []byte) peer.Response {
     // create the encrypter entity - we give it an ID, the bccsp instance, the key and (optionally) the IV
     ent, err := entities.NewAES256EncrypterEntity("ID", t.bccspInst, encKey, IV)
     if err != nil {
@@ -130,9 +130,9 @@ func (t *CvChain) Enc(stub shim.ChaincodeStubInterface, args []string, encKey, I
     return shim.Success(nil)
 }
 
-func (t *CvChain) Dec(stub shim.ChaincodeStubInterface, args []string, decKey []byte) pb.Response {
+func (t *CvChain) Dec(stub shim.ChaincodeStubInterface, args []string, decKey []byte) peer.Response {
     // create the encrypter entity - we give it an ID, the bccsp instance, the key and (optionally) the IV
-    ent, err := entities.NewAES256EncrypterEntity("ID", t.bccspInst, decKey, "")
+    ent, err := entities.NewAES256EncrypterEntity("ID", t.bccspInst, decKey, []byte(""))
     if err != nil {
         return shim.Error(fmt.Sprintf("entities.NewAES256EncrypterEntity failed, err %s", err))
         //return "", fmt.Errorf("entities.NewAES256EncrypterEntity failed, err %s", err)
@@ -154,7 +154,7 @@ func (t *CvChain) Dec(stub shim.ChaincodeStubInterface, args []string, decKey []
     json.Unmarshal(value, &cv)
     // here we return the decrypted value as a result
     // return cv.Company, nil
-    return shim.Success(cv.Company)
+    return shim.Success([]byte(cv.Company))
 }
 
 // getStateAndDecrypt retrieves the value associated to key,
