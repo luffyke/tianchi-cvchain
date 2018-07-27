@@ -111,7 +111,7 @@ func (t *CvChain) Enc(stub shim.ChaincodeStubInterface, args []string, encKey, I
     }
     */
     /*
-	key := args[0]
+    key := args[0]
     cleartextValue := []byte(args[1])
     */
     // key
@@ -125,7 +125,7 @@ func (t *CvChain) Enc(stub shim.ChaincodeStubInterface, args []string, encKey, I
     if err != nil {
         // return "", fmt.Errorf("encryptAndPutState failed: %s", err)
         return shim.Error(fmt.Sprintf("signEncryptAndPutState failed, err %+v", err))
-	}
+    }
     // return string(cvAsBytes), nil
     return shim.Success(nil)
 }
