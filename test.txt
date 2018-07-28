@@ -1,0 +1,27 @@
+peer chaincode install -p chaincodedev/chaincode/tianchi-cvchain -n mycc -v 0
+
+peer chaincode instantiate -n mycc -v 0 -c '{"Args":[]}' -C myc
+
+peer chaincode invoke -n mycc -c '{"Args":["addRecord","1001","1999","college1","bachelor"]}' -C myc
+peer chaincode invoke -n mycc -c '{"Args":["addRecord","1001", "2003","institute1","master"]}' -C myc
+peer chaincode invoke -n mycc -c '{"Args":["addRecord","1001", "2006","corp1", "engineer"]}' -C myc
+
+peer chaincode query -n mycc -c '{"Args":["getRecord","1001", "2003"]}' -C myc
+
+peer chaincode invoke -n mycc -C myc -c '{"Args":["encRecord","1009","2002","college2","bachelor"]}' --transient "{\"ENCKEY\":\"$ENCKEY\",\"IV\":\"$IV\"}"
+peer chaincode invoke -n mycc -C myc -c '{"Args":["encRecord","1009","2006","corp2", "engineer"]}' --transient "{\"ENCKEY\":\"$ENCKEY\",\"IV\":\"$IV\"}"
+peer chaincode invoke -n mycc -C myc -c '{"Args":["encRecord","1009","2012","corp3", "manager"]}' --transient "{\"ENCKEY\":\"$ENCKEY\",\"IV\":\"$IV\"}"
+
+peer chaincode query -n mycc -C myc -c '{"Args":["decRecord", "1009", "2006"]}' --transient "{\"DECKEY\":\"$DECKEY\"}"
+
+ENCKEY=`openssl rand 32 -base64` && DECKEY=$ENCKEY
+c40e6COXeVsfcZGRwhw6HeD+KazV7mG0lsUIgAzYs2g=
+
+IV=`openssl rand 16 -base64`
+e9I5X3+TQw83MQGECqDzVQ==
+
+peer chaincode invoke -n mycc -C myc -c '{"Args":["encRecord","1009","2002","college2","bachelor"]}' --transient "{\"ENCKEY\":\"c40e6COXeVsfcZGRwhw6HeD+KazV7mG0lsUIgAzYs2g=\",\"IV\":\"e9I5X3+TQw83MQGECqDzVQ==\"}"
+peer chaincode invoke -n mycc -C myc -c '{"Args":["encRecord","1009","2006","corp2", "engineer"]}' --transient "{\"ENCKEY\":\"c40e6COXeVsfcZGRwhw6HeD+KazV7mG0lsUIgAzYs2g=\",\"IV\":\"e9I5X3+TQw83MQGECqDzVQ==\"}"
+peer chaincode invoke -n mycc -C myc -c '{"Args":["encRecord","1009","2012","corp3", "manager"]}' --transient "{\"ENCKEY\":\"c40e6COXeVsfcZGRwhw6HeD+KazV7mG0lsUIgAzYs2g=\",\"IV\":\"e9I5X3+TQw83MQGECqDzVQ==\"}"
+
+peer chaincode query -n mycc -C myc -c '{"Args":["decRecord", "1009", "2006"]}' --transient "{\"DECKEY\":\"c40e6COXeVsfcZGRwhw6HeD+KazV7mG0lsUIgAzYs2g=\"}"
